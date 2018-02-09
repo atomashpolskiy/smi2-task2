@@ -95,7 +95,7 @@ public class Main {
             counts.forEach((w, count) -> {
                 out.println("% of '" + w + "': " + (count.doubleValue() / total * 100));
             });
-            out.println("# of nulls: " + (Long.valueOf(nullsCount).doubleValue() / total * 100));
+            out.println("% of nulls: " + (Long.valueOf(nullsCount).doubleValue() / total * 100));
         }
     }
 

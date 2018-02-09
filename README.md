@@ -92,6 +92,8 @@ Gathering stats, please wait for 3 seconds...
 # of nulls: 17.000901919415405
 ```
 
+Note how `bird` and `plant` again end up in a single bucket and have the same sampling fraction of 20.5% due to low prob. resolution. Increasing the resolution is the correct way to sample `bird` and `plant` in 20% and 21% of cases respectively.
+
 ### Stress Test
 
 When stress test option is selected, the application generates a number of items with different random weights.
