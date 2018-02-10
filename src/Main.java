@@ -63,6 +63,7 @@ public class Main {
         }
 
         Duration maxRunningTime = Duration.ofSeconds(3);
+        Duration runningTime;
         out.println("Gathering stats, please wait for " + maxRunningTime.getSeconds() + " seconds...");
 
         long t0 = System.nanoTime();
@@ -79,7 +80,7 @@ public class Main {
             }
 
             if (i % 1_000_000 == 0) {
-                Duration runningTime = Duration.ofNanos(System.nanoTime() - t0);
+                runningTime = Duration.ofNanos(System.nanoTime() - t0);
                 if (runningTime.compareTo(maxRunningTime) > 0) {
                     break;
                 }
@@ -87,7 +88,7 @@ public class Main {
         }
 
         long total = counts.values().stream().reduce(Math::addExact).get() + nullsCount;
-        out.println("# of samples: " + String.format("%,d", total));
+        out.println(String.format("# of samples: %,d (%.0f ns/sample)", total, ((double) runningTime.toNanos() / total)));
         if (isStressTest) {
             out.println("# of items: " + randomizer.getItemCount());
             out.println("# of buckets (different weights): " + randomizer.getBucketCount());

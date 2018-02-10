@@ -20,10 +20,10 @@ Type next word or hit <Enter> to finish input
 
 Individual items weights do not sum to 1; 99,30% of queries will return null
 Gathering stats, please wait for 3 seconds...
-# of samples: 60 565 572
-% of 'bob': 0.34892100086167765
-% of 'alice': 0.3505737550039154
-# of nulls: 99.30050524413441
+# of samples: 59 591 330 (50 ns/sample)
+% of 'bob': 0.34998547607512703
+% of 'alice': 0.3497790702103813
+% of nulls: 99.30023545371449
 ```
 
 In order to fix this, one should pick a more precise resolution value: 
@@ -44,10 +44,10 @@ Type next word or hit <Enter> to finish input
 
 Individual items weights do not sum to 1; 99,30% of queries will return null
 Gathering stats, please wait for 3 seconds...
-# of samples: 59 212 949
-% of 'bob': 0.3983672557838658
-% of 'alice': 0.30038530930118
-# of nulls: 99.30124743491496
+# of samples: 57 313 252 (52 ns/sample)
+% of 'bob': 0.39914154583306494
+% of 'alice': 0.30023771814588357
+% of nulls: 99.30062073602105
 ```
 
 ### Nulls
@@ -83,16 +83,16 @@ Type next word or hit <Enter> to finish input
 
 Individual items weights do not sum to 1; 17,00% of queries will return null
 Gathering stats, please wait for 3 seconds...
-# of samples: 35 296 945
-% of 'cat': 4.998265430620129
-% of 'bird': 20.50542334471156
-% of 'plant': 20.501323839782735
-% of 'fish': 32.99611906922823
-% of 'dog': 3.9979663962419414
-# of nulls: 17.000901919415405
+# of samples: 35 158 086 (85 ns/sample)
+% of 'cat': 5.0047604980544165
+% of 'fish': 33.00388707166824
+% of 'bird': 20.4869315127109
+% of 'plant': 20.492128041327394
+% of 'dog': 4.002285562416566
+% of nulls: 17.010007313822488
 ```
 
-Note how `bird` and `plant` again end up in a single bucket and have the same sampling fraction of 20.5% due to low prob. resolution. Increasing the resolution is the correct way to sample `bird` and `plant` in 20% and 21% of cases respectively.
+Note how `bird` and `plant` again end up in a single bucket and have the same sampling fraction of 20.5% due to insufficient prob. resolution. Increasing the resolution is the correct way to sample `bird` and `plant` in 20% and 21% of cases respectively.
 
 ### Stress Test
 
@@ -103,10 +103,10 @@ Input probability resolution (default is 0,010000; hit <Enter> to leave the defa
 
 Hit <Enter> to run stress test or type a word to begin manual input
 
-Individual items weights do not sum to 1; 0,04% of queries will return null
+Individual items weights do not sum to 1; 0,05% of queries will return null
 Gathering stats, please wait for 3 seconds...
-# of samples: 11 264 209
-# of items: 3647
-# of buckets (different weights): 3617
+# of samples: 11 135 247 (269 ns/sample)
+# of items: 3624
+# of buckets (different weights): 3602
 ```
 
