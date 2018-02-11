@@ -4,10 +4,10 @@ import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
+import java.util.PrimitiveIterator;
 import java.util.Random;
 
 public class ItemRandomizer<T> {
-    static final float PROB_RESOLUTION = 0.01f;
 
     public static <T> Builder<T> builder() {
         return new Builder<>();
@@ -15,11 +15,12 @@ public class ItemRandomizer<T> {
 
     private final int itemCount;
 
-    private final float resolution;
     private final Bucket[] buckets;
     private final Random random;
 
-    private ItemRandomizer(List<WeightedItem<T>> items, float resolution) {
+    private PrimitiveIterator.OfLong randomLongs;
+
+    private ItemRandomizer(List<WeightedItem<T>> items) {
         Collections.sort(items, WeightedItemComparator.ascending);
 
         Iterator<WeightedItem<T>> iter = items.iterator();
@@ -28,8 +29,8 @@ public class ItemRandomizer<T> {
         List<Bucket> buckets = new ArrayList<>();
 
         List<T> bucket;
-        float weight;
-        float weightTotal = 0;
+        long weight;
+        long weightTotal = 0;
 
         do {
             bucket = new ArrayList<>();
@@ -43,7 +44,7 @@ public class ItemRandomizer<T> {
 
             while (iter.hasNext()) {
                 item = iter.next();
-                if (distance(item.getWeight(), weight) < resolution) {
+                if (item.getWeight() == weight) {
                     bucket.add(item.getItem());
                     weightTotal += item.getWeight();
                     item = null;
@@ -61,33 +62,36 @@ public class ItemRandomizer<T> {
         }
 
         this.itemCount = items.size();
-
-        this.resolution = resolution;
         this.buckets = buckets.toArray(new Bucket[buckets.size()]);
         this.random = new Random();
     }
 
-    private static float distance(float x, float y) {
-        return Math.abs(x - y);
+    private void initRandomLongs() {
+        long maxWeight = buckets[buckets.length - 1].getWeight();
+        this.randomLongs = random.longs(Long.MAX_VALUE, 1, maxWeight + 1).iterator();
+    }
+
+    private long getRandomLong() {
+        if (randomLongs == null || !randomLongs.hasNext()) {
+            initRandomLongs();
+        }
+        return randomLongs.nextLong();
     }
 
     public T nextItem() {
-        float f = random.nextFloat();
+        long r = getRandomLong();
 
         int from = 0, to = (buckets.length - 1);
         int mid;
-        float weight;
+        double weight;
 
         while (from < to) {
             mid = from + (to - from) / 2;
             weight = buckets[mid].getWeight();
 
-            float diff = weight - f;
-            if (diff >= 0 && Math.abs(diff) < resolution) {
+            if (r == weight) {
                 return getRandomItem(buckets[mid]);
-            }
-
-            if (f > weight) {
+            } else if (r > weight) {
                 from = mid + 1;
             } else {
                 to = mid - 1;
@@ -96,12 +100,13 @@ public class ItemRandomizer<T> {
 
         do {
             weight = buckets[from].getWeight();
-            if (f < weight) {
+            if (r <= weight) {
                 return getRandomItem(buckets[from]);
             }
         } while (++from < buckets.length);
 
-        return null;
+        // should not happen as long as the above algorithm works correctly
+        throw new IllegalStateException("Failed to select random item");
     }
 
     @SuppressWarnings("unchecked")
@@ -119,46 +124,26 @@ public class ItemRandomizer<T> {
     }
 
     public static class Builder<T> {
-
         private List<WeightedItem<T>> items;
-        private float capacity;
-        private float resolution = PROB_RESOLUTION;
 
         private Builder() {
             this.items = new ArrayList<>();
         }
 
-        public Builder<T> resolution(float resolution) {
-            if (resolution < 0 || resolution > 0.5) {
-                throw new IllegalArgumentException(
-                        String.format("Illegal resolution. Expected [0; 0.5], got: %f", resolution));
-            }
-            this.resolution = resolution;
-            return this;
-        }
-
-        public Builder<T> add(T item, float weight) {
+        public Builder<T> add(T item, long weight) {
             Objects.requireNonNull(item);
-            if (weight <= 0 || weight > 1) {
-                throw new IllegalArgumentException("Illegal weight. Expected (0; 1], got: " + weight);
-            } else if (capacity + weight > 1) {
-                throw new IllegalArgumentException(
-                        String.format("Insufficient capacity (left: %f, item weight: %f)", (1 - capacity), weight));
+            if (weight <= 0) {
+                throw new IllegalArgumentException("Weight must be positive");
             }
             items.add(new WeightedItem<>(item, weight));
-            capacity += weight;
             return this;
-        }
-
-        public float capacity() {
-            return capacity;
         }
 
         public ItemRandomizer<T> build() {
             if (items.isEmpty()) {
                 throw new IllegalStateException("No items");
             }
-            return new ItemRandomizer<>(items, resolution);
+            return new ItemRandomizer<>(items);
         }
     }
 
@@ -167,25 +152,25 @@ public class ItemRandomizer<T> {
 
         @Override
         public int compare(Weighted o1, Weighted o2) {
-            return (int) Math.signum(o1.getWeight() - o2.getWeight());
+            return (int) (o1.getWeight() - o2.getWeight());
         }
     }
 }
 
 interface Weighted {
-    float getWeight();
+    long getWeight();
 }
 
 class WeightedItem<T> implements Weighted {
     private T item;
-    private float weight;
+    private long weight;
 
-    WeightedItem(T item, float weight) {
+    WeightedItem(T item, long weight) {
         this.item = item;
         this.weight = weight;
     }
 
-    public float getWeight() {
+    public long getWeight() {
         return weight;
     }
 
@@ -195,15 +180,15 @@ class WeightedItem<T> implements Weighted {
 }
 
 class Bucket {
-    private float weight;
+    private long weight;
     private List<?> items;
 
-    public Bucket(float weight, List<?> items) {
+    public Bucket(long weight, List<?> items) {
         this.weight = weight;
         this.items = items;
     }
 
-    public float getWeight() {
+    public long getWeight() {
         return weight;
     }
 

@@ -13,7 +13,8 @@ public class Main {
         ItemRandomizer.Builder<String> builder = ItemRandomizer.builder();
 
         String word;
-        float weight;
+        long weight;
+        int maxLength = 0;
 
         ItemRandomizer<String> randomizer;
 
@@ -21,15 +22,6 @@ public class Main {
 
         try {
             Scanner scanner = new Scanner(in);
-
-            out.println(String.format("Input probability resolution (default is %f; hit <Enter> to leave the default):",
-                    ItemRandomizer.PROB_RESOLUTION));
-            String s = scanner.nextLine();
-            if (!s.isEmpty()) {
-                float resolution = Float.parseFloat(s);
-                builder.resolution(resolution);
-                out.println("Probability resolution set to " + resolution);
-            }
 
             out.println("Hit <Enter> to run stress test or type a word to begin manual input");
 
@@ -43,10 +35,13 @@ public class Main {
                     }
                     break;
                 } else {
+                    if (word.length() > maxLength) {
+                        maxLength = word.length();
+                    }
                     k++;
                 }
-                out.println("Input probability for the above word. Correct values are (0; 1.0]");
-                weight = Float.parseFloat(scanner.nextLine());
+                out.println("Input weight for the above word:");
+                weight = Long.parseLong(scanner.nextLine());
                 builder.add(word, weight);
                 out.println("Type next word or hit <Enter> to finish input");
             }
@@ -57,11 +52,6 @@ public class Main {
             return;
         }
 
-        if (builder.capacity() < 1) {
-            out.println(String.format("Individual items weights do not sum to 1; %.2f%% of queries will return null",
-                    (1 - builder.capacity()) * 100));
-        }
-
         Duration maxRunningTime = Duration.ofSeconds(3);
         Duration runningTime;
         out.println("Gathering stats, please wait for " + maxRunningTime.getSeconds() + " seconds...");
@@ -69,15 +59,10 @@ public class Main {
         long t0 = System.nanoTime();
         int i = 0;
         Map<String, Long> counts = new HashMap<>();
-        long nullsCount = 0;
 
         for (;;) {
             String nextWord = randomizer.nextItem();
-            if (nextWord == null) {
-                nullsCount++;
-            } else {
-                counts.merge(nextWord, 1L, Math::addExact);
-            }
+            counts.merge(nextWord, 1L, Math::addExact);
 
             if (i % 1_000_000 == 0) {
                 runningTime = Duration.ofNanos(System.nanoTime() - t0);
@@ -87,35 +72,27 @@ public class Main {
             }
         }
 
-        long total = counts.values().stream().reduce(Math::addExact).get() + nullsCount;
+        int maxWordLength = maxLength;
+        long total = counts.values().stream().reduce(Math::addExact).get();
         out.println(String.format("# of samples: %,d (%.0f ns/sample)", total, ((double) runningTime.toNanos() / total)));
         if (isStressTest) {
-            out.println("# of items: " + randomizer.getItemCount());
-            out.println("# of buckets (different weights): " + randomizer.getBucketCount());
+            out.println(String.format("# of items: %,d", randomizer.getItemCount()));
+            out.println(String.format("# of buckets (distinct weights): %,d", randomizer.getBucketCount()));
         } else {
             counts.forEach((w, count) -> {
-                out.println("% of '" + w + "': " + (count.doubleValue() / total * 100));
+                out.println(String.format("# of '%" + maxWordLength + "s': %,10d (%.2f%%)", w, count, (count.doubleValue() / total * 100)));
             });
-            out.println("% of nulls: " + (Long.valueOf(nullsCount).doubleValue() / total * 100));
         }
     }
 
     private static void generateStressTest(ItemRandomizer.Builder<String> builder) {
-        float r = 0.000_000_1f;
-        builder.resolution(r);
+        int streamSize = 1_000_000, bound = 1_000_000_000;
 
         Random random = new Random();
-        int i = 0;
-        float w = 0;
-        while (i < 1_000_000_000) {
-            w += r * (random.nextInt(2) + 1);
-            if (w <= (1 - builder.capacity())) {
-                builder.add(randomString(random), w);
-            } else {
-                break;
-            }
-            i++;
-        }
+        random.longs(streamSize, 1, bound)
+                .forEach((randomWeight) -> {
+                    builder.add(randomString(random), randomWeight);
+                });
     }
 
     private static String randomString(Random r) {
