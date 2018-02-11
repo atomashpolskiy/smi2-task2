@@ -16,9 +16,10 @@ public class ItemRandomizer<T> {
     private final int itemCount;
 
     private final Bucket[] buckets;
-    private final Random random;
+    private final int minWeight;
+    private final int maxWeight;
 
-    private PrimitiveIterator.OfLong randomLongs;
+    private final Random random;
 
     private ItemRandomizer(List<WeightedItem<T>> items) {
         Collections.sort(items, WeightedItemComparator.ascending);
@@ -29,8 +30,8 @@ public class ItemRandomizer<T> {
         List<Bucket> buckets = new ArrayList<>();
 
         List<T> bucket;
-        long weight;
-        long weightTotal = 0;
+        int weight;
+        int weightTotal = 0;
 
         do {
             bucket = new ArrayList<>();
@@ -63,23 +64,13 @@ public class ItemRandomizer<T> {
 
         this.itemCount = items.size();
         this.buckets = buckets.toArray(new Bucket[buckets.size()]);
+        this.minWeight = buckets.get(0).getWeight();
+        this.maxWeight = buckets.get(buckets.size() - 1).getWeight();
         this.random = new Random();
     }
 
-    private void initRandomLongs() {
-        long maxWeight = buckets[buckets.length - 1].getWeight();
-        this.randomLongs = random.longs(Long.MAX_VALUE, 1, maxWeight + 1).iterator();
-    }
-
-    private long getRandomLong() {
-        if (randomLongs == null || !randomLongs.hasNext()) {
-            initRandomLongs();
-        }
-        return randomLongs.nextLong();
-    }
-
     public T nextItem() {
-        long r = getRandomLong();
+        long r = random.nextInt(maxWeight - minWeight + 1) + minWeight;
 
         int from = 0, to = (buckets.length - 1);
         int mid;
@@ -111,6 +102,9 @@ public class ItemRandomizer<T> {
 
     @SuppressWarnings("unchecked")
     private T getRandomItem(Bucket bucket) {
+        if (bucket.getItems().size() == 1) {
+            return (T) bucket.getItems().get(0);
+        }
         int i = random.nextInt(bucket.getItems().size());
         return (T) bucket.getItems().get(i);
     }
@@ -125,16 +119,20 @@ public class ItemRandomizer<T> {
 
     public static class Builder<T> {
         private List<WeightedItem<T>> items;
+        private long capacity = Integer.MAX_VALUE;
 
         private Builder() {
             this.items = new ArrayList<>();
         }
 
-        public Builder<T> add(T item, long weight) {
+        public Builder<T> add(T item, int weight) {
             Objects.requireNonNull(item);
             if (weight <= 0) {
                 throw new IllegalArgumentException("Weight must be positive");
+            } else if (capacity - weight < 0) {
+                throw new IllegalStateException("Insufficient capacity: the sum of items' weights exceeds maximum allowed value");
             }
+            capacity -= weight;
             items.add(new WeightedItem<>(item, weight));
             return this;
         }
@@ -152,25 +150,25 @@ public class ItemRandomizer<T> {
 
         @Override
         public int compare(Weighted o1, Weighted o2) {
-            return (int) (o1.getWeight() - o2.getWeight());
+            return o1.getWeight() - o2.getWeight();
         }
     }
 }
 
 interface Weighted {
-    long getWeight();
+    int getWeight();
 }
 
 class WeightedItem<T> implements Weighted {
     private T item;
-    private long weight;
+    private int weight;
 
-    WeightedItem(T item, long weight) {
+    WeightedItem(T item, int weight) {
         this.item = item;
         this.weight = weight;
     }
 
-    public long getWeight() {
+    public int getWeight() {
         return weight;
     }
 
@@ -180,15 +178,15 @@ class WeightedItem<T> implements Weighted {
 }
 
 class Bucket {
-    private long weight;
+    private int weight;
     private List<?> items;
 
-    public Bucket(long weight, List<?> items) {
+    public Bucket(int weight, List<?> items) {
         this.weight = weight;
         this.items = items;
     }
 
-    public long getWeight() {
+    public int getWeight() {
         return weight;
     }
 

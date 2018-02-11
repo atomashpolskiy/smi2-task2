@@ -13,7 +13,7 @@ public class Main {
         ItemRandomizer.Builder<String> builder = ItemRandomizer.builder();
 
         String word;
-        long weight;
+        int weight;
         int maxLength = 0;
 
         ItemRandomizer<String> randomizer;
@@ -41,7 +41,7 @@ public class Main {
                     k++;
                 }
                 out.println("Input weight for the above word:");
-                weight = Long.parseLong(scanner.nextLine());
+                weight = Integer.parseInt(scanner.nextLine());
                 builder.add(word, weight);
                 out.println("Type next word or hit <Enter> to finish input");
             }
@@ -86,13 +86,12 @@ public class Main {
     }
 
     private static void generateStressTest(ItemRandomizer.Builder<String> builder) {
-        int streamSize = 1_000_000, bound = 1_000_000_000;
-
         Random random = new Random();
-        random.longs(streamSize, 1, bound)
-                .forEach((randomWeight) -> {
-                    builder.add(randomString(random), randomWeight);
-                });
+        int randomWeight;
+        for (int i = 1; i <= 10_000; i++) {
+            randomWeight = random.nextInt(100_000) + 1;
+            builder.add(randomString(random), randomWeight);
+        }
     }
 
     private static String randomString(Random r) {
