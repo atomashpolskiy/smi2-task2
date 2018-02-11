@@ -13,7 +13,7 @@ public class Main {
         ItemRandomizer.Builder<String> builder = ItemRandomizer.builder();
 
         String word;
-        long weight;
+        double weight;
         int maxLength = 0;
 
         ItemRandomizer<String> randomizer;
@@ -41,7 +41,7 @@ public class Main {
                     k++;
                 }
                 out.println("Input weight for the above word:");
-                weight = Long.parseLong(scanner.nextLine());
+                weight = Double.parseDouble(scanner.nextLine());
                 builder.add(word, weight);
                 out.println("Type next word or hit <Enter> to finish input");
             }

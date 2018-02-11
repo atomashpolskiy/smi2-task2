@@ -1,3 +1,4 @@
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -111,6 +112,9 @@ public class ItemRandomizer<T> {
 
     @SuppressWarnings("unchecked")
     private T getRandomItem(Bucket bucket) {
+        if (bucket.getItems().size() == 1) {
+            return (T) bucket.getItems().get(0);
+        }
         int i = random.nextInt(bucket.getItems().size());
         return (T) bucket.getItems().get(i);
     }
@@ -130,7 +134,7 @@ public class ItemRandomizer<T> {
             this.items = new ArrayList<>();
         }
 
-        public Builder<T> add(T item, long weight) {
+        public Builder<T> add(T item, double weight) {
             Objects.requireNonNull(item);
             if (weight <= 0) {
                 throw new IllegalArgumentException("Weight must be positive");
@@ -143,7 +147,38 @@ public class ItemRandomizer<T> {
             if (items.isEmpty()) {
                 throw new IllegalStateException("No items");
             }
+            normalize(items);
+            checkTotalWeight(items);
             return new ItemRandomizer<>(items);
+        }
+
+        // possible scale values are [0; 324]
+        // e.g., see https://docs.oracle.com/cd/E19957-01/806-3568/ncg_math.html
+        // (TABLE 2-5   Bit Patterns in Double-Storage Format and their IEEE Values)
+        private void normalize(List<WeightedItem<T>> items) {
+            int maxScale = 0;
+            for (WeightedItem<?> item : items) {
+                double weight = item.getUnscaledWeight();
+                int scale = BigDecimal.valueOf(weight).scale();
+                if (scale > maxScale) {
+                    maxScale = scale;
+                }
+            }
+
+            for (WeightedItem<?> item : items) {
+                item.setScale(maxScale);
+            }
+        }
+
+        private void checkTotalWeight(List<WeightedItem<T>> items) {
+            long capacity = Long.MAX_VALUE;
+
+            for (WeightedItem<?> item : items) {
+                capacity -= item.getWeight();
+                if (capacity < 0) {
+                    throw new IllegalStateException("Insufficient capacity");
+                }
+            }
         }
     }
 
@@ -163,15 +198,35 @@ interface Weighted {
 
 class WeightedItem<T> implements Weighted {
     private T item;
-    private long weight;
+    private double weight;
+    private int scale;
 
-    WeightedItem(T item, long weight) {
+    private long normalizedWeight;
+
+    WeightedItem(T item, double weight) {
         this.item = item;
         this.weight = weight;
+        this.scale = 0;
+        this.normalizedWeight = normalize(weight, scale);
+    }
+
+    private long normalize(double weight, int scale) {
+        return (long) (weight * Math.pow(10, scale));
+    }
+
+    double getUnscaledWeight() {
+        return weight;
+    }
+
+    void setScale(int scale) {
+        if (this.scale != scale) {
+            this.scale = scale;
+            this.normalizedWeight = normalize(weight, scale);
+        }
     }
 
     public long getWeight() {
-        return weight;
+        return normalizedWeight;
     }
 
     T getItem() {
@@ -183,16 +238,16 @@ class Bucket {
     private long weight;
     private List<?> items;
 
-    public Bucket(long weight, List<?> items) {
+    Bucket(long weight, List<?> items) {
         this.weight = weight;
         this.items = items;
     }
 
-    public long getWeight() {
+    long getWeight() {
         return weight;
     }
 
-    public List<?> getItems() {
+    List<?> getItems() {
         return items;
     }
 }
