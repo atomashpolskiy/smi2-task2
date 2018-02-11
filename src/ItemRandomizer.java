@@ -187,7 +187,7 @@ public class ItemRandomizer<T> {
 
         @Override
         public int compare(Weighted o1, Weighted o2) {
-            return (int) (o1.getWeight() - o2.getWeight());
+            return (int) Math.signum(o1.getWeight() - o2.getWeight());
         }
     }
 }
